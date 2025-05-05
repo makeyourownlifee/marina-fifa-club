@@ -1,14 +1,13 @@
 {
   "name": "marina-fifa-club",
   "version": "1.0.0",
-  "description": "A web app for Marina FIFA Club",
   "main": "server.js",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongodb": "^4.1.0"
+  },
   "scripts": {
     "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.17.1"
-  },
-  "author": "",
-  "license": "ISC"
+  }
 }
