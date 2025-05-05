@@ -6,7 +6,7 @@ const port = 3000;
 app.use(express.json());
 app.use(express.static('.'));
 
-const uri = 'mongodb://localhost:27017';
+const uri = 'mongodb+srv://marinauser:Casein99@cluster0.qar8kde.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 const client = new MongoClient(uri);
 
 async function connectToMongo() {
