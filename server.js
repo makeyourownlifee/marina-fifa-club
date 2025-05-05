@@ -1,11 +1,71 @@
 const express = require('express');
+const { MongoClient } = require('mongodb');
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
-// Serve static files (e.g., index.html)
+app.use(express.json());
 app.use(express.static('.'));
 
-// Start the server
+const uri = 'mongodb://localhost:27017';
+const client = new MongoClient(uri);
+
+async function connectToMongo() {
+  try {
+    await client.connect();
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('Error connecting to MongoDB:', error);
+  }
+}
+
+connectToMongo();
+
+const db = client.db('marina-fifa-club');
+const tournamentsCollection = db.collection('tournaments');
+const diceGamesCollection = db.collection('diceGames');
+
+app.get('/api/tournaments', async (req, res) => {
+  try {
+    const tournaments = await tournamentsCollection.find({}).toArray();
+    res.json(tournaments);
+  } catch (error) {
+    console.error('Error fetching tournaments:', error);
+    res.status(500).send('Error fetching tournaments');
+  }
+});
+
+app.post('/api/tournaments', async (req, res) => {
+  try {
+    const tournament = req.body;
+    await tournamentsCollection.insertOne(tournament);
+    res.status(200).send('Tournament saved');
+  } catch (error) {
+    console.error('Error saving tournament:', error);
+    res.status(500).send('Error saving tournament');
+  }
+});
+
+app.get('/api/diceGames', async (req, res) => {
+  try {
+    const diceGames = await diceGamesCollection.find({}).toArray();
+    res.json(diceGames);
+  } catch (error) {
+    console.error('Error fetching dice games:', error);
+    res.status(500).send('Error fetching dice games');
+  }
+});
+
+app.post('/api/diceGames', async (req, res) => {
+  try {
+    const diceGame = req.body;
+    await diceGamesCollection.insertOne(diceGame);
+    res.status(200).send('Dice game saved');
+  } catch (error) {
+    console.error('Error saving dice game:', error);
+    res.status(500).send('Error saving dice game');
+  }
+});
+
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });
