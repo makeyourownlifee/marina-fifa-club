@@ -29,12 +29,6 @@
       background-attachment: fixed;
       min-height: 100vh;
     }
-    .suggestions {
-      position: absolute;
-      z-index: 50;
-      max-height: 200px;
-      overflow-y: auto;
-    }
     @media (max-width: 640px) {
       .mb-mobile {
         margin-bottom: 4rem;
@@ -43,9 +37,6 @@
         max-height: 80vh;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-      }
-      .suggestions {
-        width: 100%;
       }
     }
   </style>
@@ -64,29 +55,26 @@
       { id: 5, name: "Benyó", avatar: null },
     ];
 
-    // Csapatok importálása az oldalon lévő Men's listából (3+ csillag szűrve)
-    const fetchTeams = async () => {
-      try {
-        const response = await fetch('https://www.fcratings.com/all-clubs');
-        const text = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(text, 'text/html');
-        const teams = [];
-        const menClubs = doc.querySelectorAll('h3:contains("Men\'s Clubs") + ul li');
-        menClubs.forEach(item => {
-          const name = item.querySelector('a')?.textContent.trim();
-          const stars = item.querySelectorAll('.star').length;
-          if (stars >= 3 && name) {
-            const avatar = item.querySelector('img')?.src || null;
-            teams.push({ name, avatar });
-          }
-        });
-        return teams;
-      } catch (error) {
-        console.error('Error fetching teams:', error);
-        return [];
-      }
-    };
+    // SoFIFA FC 25 top 300 klubcsapat és válogatottak (részleges lista)
+    const initialTeams = [
+      "Real Madrid", "FC Barcelona", "Atlético Madrid", "Sevilla FC", "Real Sociedad",
+      "Villarreal", "Real Betis", "Celta Vigo", "Valencia CF", "Athletic Bilbao",
+      "Getafe CF", "Espanyol", "Mallorca", "Osasuna", "Granada CF",
+      "Manchester City", "Liverpool", "Chelsea", "Arsenal", "Manchester United",
+      "Tottenham Hotspur", "West Ham United", "Leicester City", "Everton", "Aston Villa",
+      "Newcastle United", "Brighton", "Wolves", "Crystal Palace", "Southampton",
+      "Bayern Munich", "Borussia Dortmund", "RB Leipzig", "Bayer Leverkusen", "VfL Wolfsburg",
+      "Eintracht Frankfurt", "Borussia Mönchengladbach", "FC Köln", "Hoffenheim", "Union Berlin",
+      "Juventus", "Inter Milan", "AC Milan", "Napoli", "AS Roma",
+      "Lazio", "Fiorentina", "Atalanta", "Sassuolo", "Torino",
+      "PSG", "Olympique Marseille", "Lyon", "Monaco", "Lille",
+      "Nice", "Rennes", "Lens", "Strasbourg", "Bordeaux",
+      "Ajax", "PSV Eindhoven", "Feyenoord", "Benfica", "Porto",
+      "Sporting CP", "Shakhtar Donetsk", "Celtic", "Rangers", "Anderlecht",
+      "Brazil", "Argentina", "France", "Germany", "Spain",
+      "England", "Italy", "Portugal", "Netherlands", "Belgium",
+      "Galatasaray", "Fenerbahçe", "Besiktas", "Zenit", "Dynamo Kyiv",
+    ];
 
     // Véletlenszerű párosítás generálás
     const shuffleArray = (array) => {
@@ -359,8 +347,8 @@
       };
 
       const handleAddCustomTeam = () => {
-        if (customTeam.trim() && !teams.some(t => t.name === customTeam.trim())) {
-          addCustomTeam({ name: customTeam.trim(), avatar: null });
+        if (customTeam.trim() && !teams.includes(customTeam.trim())) {
+          addCustomTeam(customTeam.trim());
           setCustomTeam("");
         }
       };
@@ -722,7 +710,7 @@
 
       const handleTeamSearch = (matchId, team, value) => {
         setTeamSearch({ ...teamSearch, [`${matchId}-${team}`]: value });
-        setShowSuggestions({ ...showSuggestions, [`${matchId}-${team}`]: value !== "" && teams.length > 0 });
+        setShowSuggestions({ ...showSuggestions, [`${matchId}-${team}`]: value !== "" });
         if (value === "") {
           setMatches(matches.map(match =>
             match.id === matchId ? { ...match, [team]: "" } : match
@@ -731,10 +719,9 @@
       };
 
       const selectTeam = (matchId, team, selectedTeam) => {
-        const teamObj = teams.find(t => t.name === selectedTeam);
         setMatches(matches.map(match =>
           match.id === matchId
-            ? { ...match, [team]: selectedTeam, [`${team}Avatar`]: teamObj?.avatar || "" }
+            ? { ...match, [team]: selectedTeam }
             : match
         ));
         setTeamSearch({ ...teamSearch, [`${matchId}-${team}`]: selectedTeam });
@@ -822,18 +809,13 @@
                         [
                           React.createElement(
                             "div",
-                            { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start relative" },
+                            { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start" },
                             [
                               React.createElement(
                                 "span",
                                 { className: "text-white font-medium text-sm border border-pink-500 rounded-full px-2 py-1 truncate" },
                                 `${match.team1[0].name} + ${match.team1[1].name}`
                               ),
-                              match.team1Avatar && React.createElement("img", {
-                                src: match.team1Avatar,
-                                alt: `${match.team1Club} logo`,
-                                className: "w-10 h-10 rounded-full mt-2 object-cover"
-                              }),
                               React.createElement(
                                 "div",
                                 { className: "relative w-full mt-2" },
@@ -842,33 +824,24 @@
                                     type: "text",
                                     value: teamSearch[`${match.id}-team1Club`] || match.team1Club || "",
                                     onChange: (e) => handleTeamSearch(match.id, "team1Club", e.target.value),
-                                    onFocus: () => setShowSuggestions({ ...showSuggestions, [`${match.id}-team1Club`]: true }),
-                                    onBlur: () => setTimeout(() => setShowSuggestions({ ...showSuggestions, [`${match.id}-team1Club`]: false }), 200),
                                     placeholder: "Csapat keresése...",
                                     className: "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                                   }),
-                                  showSuggestions[`${match.id}-team1Club`] && teams.length > 0 && React.createElement(
+                                  showSuggestions[`${match.id}-team1Club`] && React.createElement(
                                     "div",
-                                    { className: "suggestions bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto" },
+                                    { className: "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto" },
                                     teams
-                                      .filter(team => team.name.toLowerCase().includes((teamSearch[`${match.id}-team1Club`] || "").toLowerCase()))
+                                      .filter(team => team.toLowerCase().includes((teamSearch[`${match.id}-team1Club`] || "").toLowerCase()))
                                       .slice(0, 5)
                                       .map(team =>
                                         React.createElement(
                                           "div",
                                           {
-                                            key: `${match.id}-team1-club-${team.name}`,
-                                            onClick: () => selectTeam(match.id, "team1Club", team.name),
-                                            className: "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer flex items-center"
+                                            key: `${match.id}-team1-club-${team}`,
+                                            onClick: () => selectTeam(match.id, "team1Club", team),
+                                            className: "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer"
                                           },
-                                          [
-                                            team.avatar && React.createElement("img", {
-                                              src: team.avatar,
-                                              alt: `${team.name} logo`,
-                                              className: "w-6 h-6 rounded-full mr-2 object-cover"
-                                            }),
-                                            team.name
-                                          ]
+                                          team
                                         )
                                       )
                                   ),
@@ -919,18 +892,13 @@
                           ),
                           React.createElement(
                             "div",
-                            { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end relative" },
+                            { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end" },
                             [
                               React.createElement(
                                 "span",
                                 { className: "text-white font-medium text-sm border border-pink-500 rounded-full px-2 py-1 truncate" },
                                 `${match.team2[0].name} + ${match.team2[1].name}`
                               ),
-                              match.team2Avatar && React.createElement("img", {
-                                src: match.team2Avatar,
-                                alt: `${match.team2Club} logo`,
-                                className: "w-10 h-10 rounded-full mt-2 object-cover"
-                              }),
                               React.createElement(
                                 "div",
                                 { className: "relative w-full mt-2" },
@@ -939,33 +907,24 @@
                                     type: "text",
                                     value: teamSearch[`${match.id}-team2Club`] || match.team2Club || "",
                                     onChange: (e) => handleTeamSearch(match.id, "team2Club", e.target.value),
-                                    onFocus: () => setShowSuggestions({ ...showSuggestions, [`${match.id}-team2Club`]: true }),
-                                    onBlur: () => setTimeout(() => setShowSuggestions({ ...showSuggestions, [`${match.id}-team2Club`]: false }), 200),
                                     placeholder: "Csapat keresése...",
                                     className: "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
                                   }),
-                                  showSuggestions[`${match.id}-team2Club`] && teams.length > 0 && React.createElement(
+                                  showSuggestions[`${match.id}-team2Club`] && React.createElement(
                                     "div",
-                                    { className: "suggestions bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto" },
+                                    { className: "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto" },
                                     teams
-                                      .filter(team => team.name.toLowerCase().includes((teamSearch[`${match.id}-team2Club`] || "").toLowerCase()))
+                                      .filter(team => team.toLowerCase().includes((teamSearch[`${match.id}-team2Club`] || "").toLowerCase()))
                                       .slice(0, 5)
                                       .map(team =>
                                         React.createElement(
                                           "div",
                                           {
-                                            key: `${match.id}-team2-club-${team.name}`,
-                                            onClick: () => selectTeam(match.id, "team2Club", team.name),
-                                            className: "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer flex items-center"
+                                            key: `${match.id}-team2-club-${team}`,
+                                            onClick: () => selectTeam(match.id, "team2Club", team),
+                                            className: "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer"
                                           },
-                                          [
-                                            team.avatar && React.createElement("img", {
-                                              src: team.avatar,
-                                              alt: `${team.name} logo`,
-                                              className: "w-6 h-6 rounded-full mr-2 object-cover"
-                                            }),
-                                            team.name
-                                          ]
+                                          team
                                         )
                                       )
                                   ),
@@ -1191,11 +1150,6 @@
                                         { className: "text-white font-medium text-sm border border-pink-500 rounded-full px-2 py-1 truncate" },
                                         `${match.team1[0].name} + ${match.team1[1].name}`
                                       ),
-                                      match.team1Avatar && React.createElement("img", {
-                                        src: match.team1Avatar,
-                                        alt: `${match.team1Club} logo`,
-                                        className: "w-10 h-10 rounded-full mt-2 object-cover"
-                                      }),
                                       React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, match.team1Club || "Nincs csapat"),
                                     ]
                                   ),
@@ -1228,11 +1182,6 @@
                                         { className: "text-white font-medium text-sm border border-pink-500 rounded-full px-2 py-1 truncate" },
                                         `${match.team2[0].name} + ${match.team2[1].name}`
                                       ),
-                                      match.team2Avatar && React.createElement("img", {
-                                        src: match.team2Avatar,
-                                        alt: `${match.team2Club} logo`,
-                                        className: "w-10 h-10 rounded-full mt-2 object-cover"
-                                      }),
                                       React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, match.team2Club || "Nincs csapat"),
                                     ]
                                   ),
@@ -1296,15 +1245,7 @@
       const [tournaments, setTournaments] = useState([]);
       const [diceGames, setDiceGames] = useState([]);
       const [currentPage, setCurrentPage] = useState("home");
-      const [teams, setTeams] = useState([]);
-
-      useEffect(() => {
-        const loadTeams = async () => {
-          const fetchedTeams = await fetchTeams();
-          setTeams(fetchedTeams);
-        };
-        loadTeams();
-      }, []);
+      const [teams, setTeams] = useState(initialTeams);
 
       const addPlayer = (newPlayer) => {
         setPlayers([...players, newPlayer]);
@@ -1341,18 +1282,17 @@
         const fetchData = async () => {
           try {
             const tournamentResponse = await fetch('/api/tournaments');
+            const diceGameResponse = await fetch('/api/diceGames');
             if (tournamentResponse.ok) {
               const tournamentsData = await tournamentResponse.json();
               setTournaments(tournamentsData);
             }
-            const diceGameResponse = await fetch('/api/diceGames');
             if (diceGameResponse.ok) {
               const diceGamesData = await diceGameResponse.json();
               setDiceGames(diceGamesData);
             }
           } catch (error) {
             console.error('Error fetching data:', error);
-            // Hiba esetén üres tömb marad
           }
         };
         fetchData();
