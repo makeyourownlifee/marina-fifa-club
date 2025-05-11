@@ -44,9 +44,39 @@
 <body class="bg-gray-900">
   <div id="root"></div>
   <script type="text/javascript">
+    var gk_isXlsx = false;
+    var gk_xlsxFileLookup = {};
+    var gk_fileData = {};
+    function filledCell(cell) {
+      return cell !== '' && cell != null;
+    }
+    function loadFileData(filename) {
+      if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+          try {
+              var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+              var firstSheetName = workbook.SheetNames[0];
+              var worksheet = workbook.Sheets[firstSheetName];
+              var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+              var filteredData = jsonData.filter(row => row.some(filledCell));
+              var headerRowIndex = filteredData.findIndex((row, index) =>
+                row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+              );
+              if (headerRowIndex === -1 || headerRowIndex > 25) {
+                headerRowIndex = 0;
+              }
+              var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+              csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+              return csv;
+          } catch (e) {
+              console.error(e);
+              return "";
+          }
+      }
+      return gk_fileData[filename] || "";
+    }
+
     const { useState, useEffect } = React;
 
-    // Mock játékosok
     const initialPlayers = [
       { id: 1, name: "Mell", avatar: null },
       { id: 2, name: "Bazsi", avatar: null },
@@ -55,28 +85,46 @@
       { id: 5, name: "Benyó", avatar: null },
     ];
 
-    // SoFIFA FC 25 top 300 klubcsapat és válogatottak (részleges lista)
     const initialTeams = [
-      "Real Madrid", "FC Barcelona", "Atlético Madrid", "Sevilla FC", "Real Sociedad",
-      "Villarreal", "Real Betis", "Celta Vigo", "Valencia CF", "Athletic Bilbao",
-      "Getafe CF", "Espanyol", "Mallorca", "Osasuna", "Granada CF",
-      "Manchester City", "Liverpool", "Chelsea", "Arsenal", "Manchester United",
-      "Tottenham Hotspur", "West Ham United", "Leicester City", "Everton", "Aston Villa",
-      "Newcastle United", "Brighton", "Wolves", "Crystal Palace", "Southampton",
-      "Bayern Munich", "Borussia Dortmund", "RB Leipzig", "Bayer Leverkusen", "VfL Wolfsburg",
-      "Eintracht Frankfurt", "Borussia Mönchengladbach", "FC Köln", "Hoffenheim", "Union Berlin",
-      "Juventus", "Inter Milan", "AC Milan", "Napoli", "AS Roma",
-      "Lazio", "Fiorentina", "Atalanta", "Sassuolo", "Torino",
-      "PSG", "Olympique Marseille", "Lyon", "Monaco", "Lille",
-      "Nice", "Rennes", "Lens", "Strasbourg", "Bordeaux",
-      "Ajax", "PSV Eindhoven", "Feyenoord", "Benfica", "Porto",
-      "Sporting CP", "Shakhtar Donetsk", "Celtic", "Rangers", "Anderlecht",
-      "Brazil", "Argentina", "France", "Germany", "Spain",
-      "England", "Italy", "Portugal", "Netherlands", "Belgium",
-      "Galatasaray", "Fenerbahçe", "Besiktas", "Zenit", "Dynamo Kyiv",
-    ];
+      // English Premier League (20 teams)
+      "Arsenal", "Aston Villa", "Bournemouth", "Brentford", "Brighton & Hove Albion",
+      "Chelsea", "Crystal Palace", "Everton", "Fulham", "Ipswich Town",
+      "Leicester City", "Liverpool", "Manchester City", "Manchester United",
+      "Newcastle United", "Nottingham Forest", "Southampton", "Tottenham Hotspur",
+      "West Ham United", "Wolverhampton Wanderers",
+      // Spanish La Liga (20 teams)
+      "Alavés", "Athletic Club", "Atlético Madrid", "Barcelona", "Celta Vigo",
+      "Deportivo Alavés", "Getafe", "Girona", "Las Palmas", "Leganés",
+      "Mallorca", "Osasuna", "Rayo Vallecano", "Real Betis", "Real Madrid",
+      "Real Sociedad", "Sevilla", "Valencia", "Valladolid", "Villarreal",
+      // German Bundesliga (18 teams)
+      "Augsburg", "Bayern Munich", "Borussia Dortmund", "Borussia Mönchengladbach",
+      "Eintracht Frankfurt", "Freiburg", "Heidenheim", "Hoffenheim",
+      "Holstein Kiel", "Mainz", "RB Leipzig", "St. Pauli", "Stuttgart",
+      "Union Berlin", "Werder Bremen", "Wolfsburg", "Bochum", "Köln",
+      // French Ligue 1 (18 teams)
+      "Angers", "Auxerre", "Brest", "Le Havre", "Lens",
+      "Lille", "Lyon", "Marseille", "Monaco", "Montpellier",
+      "Nantes", "Nice", "Paris Saint-Germain", "Reims", "Rennes",
+      "Saint-Étienne", "Strasbourg", "Toulouse",
+      // Italian Serie A (20 teams)
+      "AC Milan", "Atalanta", "Bologna", "Cagliari", "Como",
+      "Empoli", "Fiorentina", "Genoa", "Hellas Verona", "Inter Milan",
+      "Juventus", "Lazio", "Lecce", "Monza", "Napoli",
+      "Parma", "Roma", "Sampdoria", "Torino", "Udinese",
+      // FIFA World Rankings Top 50 National Teams (as of September 2024, adjusted for 2025 trends)
+      "Argentina", "France", "Spain", "England", "Brazil",
+      "Belgium", "Portugal", "Netherlands", "Italy", "Croatia",
+      "Colombia", "Uruguay", "Germany", "Mexico", "USA",
+      "Switzerland", "Morocco", "Japan", "Senegal", "Denmark",
+      "Iran", "South Korea", "Poland", "Algeria", "Serbia",
+      "Chile", "Nigeria", "Austria", "Ukraine", "Egypt",
+      "Peru", "Sweden", "Czech Republic", "Norway", "Ghana",
+      "Turkey", "Cameroon", "Greece", "Wales", "Tunisia",
+      "Ivory Coast", "Hungary", "Scotland", "Romania", "Venezuela",
+      "Paraguay", "Finland", "Slovakia", "Iraq"
+    ].filter((team, index, self) => self.indexOf(team) === index); // Remove duplicates
 
-    // Véletlenszerű párosítás generálás
     const shuffleArray = (array) => {
       for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -135,7 +183,6 @@
       return matches;
     };
 
-    // TOP FIFA Csapatok statisztika számítás
     const calculateTopTeams = (tournaments) => {
       const teamStats = {};
       tournaments.forEach(tournament => {
@@ -178,7 +225,6 @@
       return topTeams;
     };
 
-    // Komponensek
     const NavBar = ({ setCurrentPage, currentPage }) => {
       const handleNavClick = (page) => {
         try {
@@ -1343,5 +1389,5 @@
       console.error("Render error:", error);
     }
   </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93e1fbcbfe3544f1',t:'MTc0Njk2OTcyOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
