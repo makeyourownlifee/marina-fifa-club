@@ -1021,7 +1021,11 @@
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [selectedDiceGame, setSelectedDiceGame] = useState(null);
   const [scrollPosition, setScrollPosition] = useState(0);
-  const [editModes, setEditModes] = useState({}); // Itt van az egyetlen deklaráció
+  const [editModes, setEditModes] = useState({});
+
+  // Új állapot a kereséshez
+  const [teamSearch, setTeamSearch] = useState({ team1: '', team2: '' });
+  const [filteredTeams, setFilteredTeams] = useState([]);
 
   const getUniqueTeams = () => {
     const allTeams = tournaments.flatMap(t => t.matches.flatMap(m => [m.team1Club, m.team2Club]));
@@ -1077,6 +1081,14 @@
 
   const sortedTournaments = [...tournaments].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   const sortedDiceGames = [...diceGames].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  // Szűrőlogika a csapatokhoz
+  const filterTeams = (searchTerm, matchIndex) => {
+  const search = searchTerm.toLowerCase();
+  const filtered = teams.filter(team => team.toLowerCase().includes(search));
+  setFilteredTeams(prev => ({ ...prev, [matchIndex]: filtered.slice(0, 10) }));
+  setTeamSearch(prev => ({ ...prev, [matchIndex === 'team1' ? 'team1' : 'team2']: searchTerm }));
+};
 
   return React.createElement(
     "div",
@@ -1212,11 +1224,20 @@
                         updatedMatches[index] = { ...updatedMatches[index], goals: { ...updatedMatches[index].goals, [team]: value } };
                         setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
                       };
-                      const handleTeamChange = (team, value) => {
+                      const handleTeamChange = (team, value, matchIndex) => {
                         const updatedMatches = [...selectedTournament.matches];
                         updatedMatches[index] = { ...updatedMatches[index], [team]: value };
                         setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
+                        setTeamSearch(prev => ({ ...prev, [matchIndex]: '' })); // Törli a keresőt mentés után
                       };
+
+                      // Szűrési logika meghívása
+                      const handleTeamSearchChange = (e, matchIndex) => {
+                        const searchTerm = e.target.value;
+                        filterTeams(searchTerm, matchIndex);
+                        setTeamSearch(prev => ({ ...prev, [matchIndex]: searchTerm }));
+                      };
+
                       return React.createElement(
                         "div",
                         { key: match.id, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
@@ -1230,17 +1251,33 @@
                                 "div",
                                 { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start" },
                                 [
-                                  isEditing ? React.createElement(
-                                    "select",
-                                    {
-                                      value: match.team1Club || "",
-                                      onChange: (e) => handleTeamChange("team1Club", e.target.value),
-                                      className: "bg-gray-700 text-white rounded-lg p-1 w-full"
-                                    },
-                                    getUniqueTeams().map(team => 
-                                      React.createElement("option", { key: team, value: team }, team)
+                                  isEditing ? [
+                                    React.createElement(
+                                      "input",
+                                      {
+                                        key: `team1-input-${index}`,
+                                        type: "text",
+                                        value: teamSearch.team1 || match.team1Club || "",
+                                        onChange: (e) => handleTeamSearchChange(e, 'team1'),
+                                        className: "bg-gray-700 text-white rounded-lg p-1 w-full mb-2",
+                                        placeholder: "Keresd a csapatot..."
+                                      }
+                                    ),
+                                    React.createElement(
+                                      "select",
+                                      {
+                                        key: `team1-select-${index}`,
+                                        value: match.team1Club || "",
+                                        onChange: (e) => handleTeamChange("team1Club", e.target.value, 'team1'),
+                                        className: "bg-gray-700 text-white rounded-lg p-1 w-full"
+                                      },
+                                      filteredTeams['team1'] && filteredTeams['team1'].length > 0 ? filteredTeams['team1'].map(team => 
+                                        React.createElement("option", { key: team, value: team }, team)
+                                      ) : initialTeams.map(team => 
+                                        React.createElement("option", { key: team, value: team }, team)
+                                      )
                                     )
-                                  ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team1Club || "Nincs csapat"),
+                                  ] : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team1Club || "Nincs csapat"),
                                   React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team1[0].name} + ${match.team1[1].name}`),
                                 ]
                               ),
@@ -1284,17 +1321,33 @@
                                 "div",
                                 { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end" },
                                 [
-                                  isEditing ? React.createElement(
-                                    "select",
-                                    {
-                                      value: match.team2Club || "",
-                                      onChange: (e) => handleTeamChange("team2Club", e.target.value),
-                                      className: "bg-gray-700 text-white rounded-lg p-1 w-full"
-                                    },
-                                    getUniqueTeams().map(team => 
-                                      React.createElement("option", { key: team, value: team }, team)
+                                  isEditing ? [
+                                    React.createElement(
+                                      "input",
+                                      {
+                                        key: `team2-input-${index}`,
+                                        type: "text",
+                                        value: teamSearch.team2 || match.team2Club || "",
+                                        onChange: (e) => handleTeamSearchChange(e, 'team2'),
+                                        className: "bg-gray-700 text-white rounded-lg p-1 w-full mb-2",
+                                        placeholder: "Keresd a csapatot..."
+                                      }
+                                    ),
+                                    React.createElement(
+                                      "select",
+                                      {
+                                        key: `team2-select-${index}`,
+                                        value: match.team2Club || "",
+                                        onChange: (e) => handleTeamChange("team2Club", e.target.value, 'team2'),
+                                        className: "bg-gray-700 text-white rounded-lg p-1 w-full"
+                                      },
+                                      filteredTeams['team2'] && filteredTeams['team2'].length > 0 ? filteredTeams['team2'].map(team => 
+                                        React.createElement("option", { key: team, value: team }, team)
+                                      ) : initialTeams.map(team => 
+                                        React.createElement("option", { key: team, value: team }, team)
+                                      )
                                     )
-                                  ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team2Club || "Nincs csapat"),
+                                  ] : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team2Club || "Nincs csapat"),
                                   React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team2[0].name} + ${match.team2[1].name}`),
                                 ]
                               ),
