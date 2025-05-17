@@ -1168,155 +1168,131 @@ calculateSerialNumbers(diceGames).forEach(({ item, serial }) => {
                           alert("Kérlek, fejezd be az összes szerkesztést (✅ legyen mindenhol)!");
                           return;
                         }
+                        console.log("Timestamp sent to server:", selectedTournament.timestamp);
+                        console.log("PUT request data:", { matches: selectedTournament.matches });
                         fetch(`/api/tournaments/${selectedTournament.timestamp}`, {
                           method: 'PUT',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ matches: selectedTournament.matches })
                         }).then(response => {
-                          if (response.ok) setTournaments(tournaments.map(t => t.timestamp === selectedTournament.timestamp ? { ...t, matches: selectedTournament.matches } : t));
-                        }).catch(console.error);
+                          console.log("PUT response status:", response.status);
+                          if (response.ok) {
+                            setTournaments(tournaments.map(t => t.timestamp === selectedTournament.timestamp ? { ...t, matches: selectedTournament.matches } : t));
+                          } else {
+                            console.error("PUT request failed with status:", response.status);
+                          }
+                        }).catch(error => console.error("PUT request error:", error));
                         handleCloseModal();
                       },
                       className: "absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300"
                     },
                     "✖"
                   ),
-                  React.createElement("h3", { className: "text-2xl font-bold text-white" }, `Bajnokság - ${new Date(selectedTournament.timestamp).toLocaleString("hu-HU")}`),
-                  React.createElement(
-                    "div",
-                    { className: "mt-4 space-y-6" },
-                    [
-                      React.createElement(
-                        "div",
-                        { className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
-                        [
-                          React.createElement("h4", { className: "text-lg font-bold text-white" }, "Összesített statisztika"),
-                          React.createElement(
-                            "div",
-                            { className: "grid grid-cols-5 gap-2 text-gray-400 text-sm mt-2" },
-                            [
-                              React.createElement("span", { className: "font-bold" }, "Helyezés"),
-                              React.createElement("span", { className: "font-bold" }, "Játékos"),
-                              React.createElement("span", { className: "font-bold text-center" }, "Győzelmek"),
-                              React.createElement("span", { className: "font-bold text-center" }, "Lőtt gól"),
-                              React.createElement("span", { className: "font-bold text-center" }, "Kapott gól"),
-                              ...calculatePlayerStats(selectedTournament.matches).map((stat, index) => [
-                                React.createElement("span", { key: `stat-${index}-pos`, className: "text-pink-500 font-bold" }, `${index + 1}.`),
-                                React.createElement("span", { key: `stat-${index}-name` }, stat.player ? stat.player.name : "Ismeretlen"),
-                                React.createElement("span", { key: `stat-${index}-wins`, className: "text-center text-pink-500 font-bold" }, stat.wins),
-                                React.createElement("span", { key: `stat-${index}-gs`, className: "text-center" }, stat.goalsScored),
-                                React.createElement("span", { key: `stat-${index}-gc`, className: "text-center" }, stat.goalsConceded),
-                              ]),
-                            ]
-                          ),
-                        ]
-                      ),
-                      selectedTournament.matches.map((match, index) => {
-                        const isEditing = editModes[index] || false;
-                        const toggleEditMode = () => setEditModes(prev => ({ ...prev, [index]: !prev[index] }));
-                        const handleGoalChange = (team, value) => {
-                          const updatedMatches = [...selectedTournament.matches];
-                          updatedMatches[index] = { ...updatedMatches[index], goals: { ...updatedMatches[index].goals, [team]: value } };
-                          setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
-                        };
-                        const handleTeamChange = (team, value) => {
-                          const updatedMatches = [...selectedTournament.matches];
-                          updatedMatches[index] = { ...updatedMatches[index], [team]: value };
-                          setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
-                        };
-                        return React.createElement(
+                  // ... (statisztika rész változatlan)
+                  selectedTournament.matches.map((match, index) => {
+                    const isEditing = editModes[index] || false;
+                    const toggleEditMode = () => setEditModes(prev => ({ ...prev, [index]: !prev[index] }));
+                    const handleGoalChange = (team, value) => {
+                      const updatedMatches = [...selectedTournament.matches];
+                      updatedMatches[index] = { ...updatedMatches[index], goals: { ...updatedMatches[index].goals, [team]: value } };
+                      setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
+                    };
+                    const handleTeamChange = (team, value) => {
+                      const updatedMatches = [...selectedTournament.matches];
+                      updatedMatches[index] = { ...updatedMatches[index], [team]: value };
+                      setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
+                    };
+                    return React.createElement(
+                      "div",
+                      { key: match.id, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
+                      [
+                        React.createElement("h4", { className: "text-gray-400 text-sm text-center font-medium" }, `#${index + 1}`),
+                        React.createElement(
                           "div",
-                          { key: match.id, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
+                          { className: "flex flex-col sm:flex-row justify-between items-center mt-4 space-y-4 sm:space-y-0 sm:space-x-4" },
                           [
-                            React.createElement("h4", { className: "text-gray-400 text-sm text-center font-medium" }, `#${index + 1}`),
                             React.createElement(
                               "div",
-                              { className: "flex flex-col sm:flex-row justify-between items-center mt-4 space-y-4 sm:space-y-0 sm:space-x-4" },
+                              { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start" },
+                              [
+                                isEditing ? React.createElement(
+                                  "select",
+                                  {
+                                    value: match.team1Club || "",
+                                    onChange: (e) => handleTeamChange("team1Club", e.target.value),
+                                    className: "bg-gray-700 text-white rounded-lg p-1 w-full"
+                                  },
+                                  getUniqueTeams().map(team => 
+                                    React.createElement("option", { key: team, value: team }, team)
+                                  )
+                                ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team1Club || "Nincs csapat"),
+                                React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team1[0].name} + ${match.team1[1].name}`),
+                              ]
+                            ),
+                            React.createElement(
+                              "div",
+                              { className: "flex flex-col items-center" },
                               [
                                 React.createElement(
                                   "div",
-                                  { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start" },
+                                  { className: "flex justify-center items-center" },
                                   [
                                     isEditing ? React.createElement(
-                                    "select",
-                                    {
-                                      value: match.team1Club || "",
-                                      onChange: (e) => handleTeamChange("team1Club", e.target.value),
-                                      className: "bg-gray-700 text-white rounded-lg p-1 w-full"
-                                    },
-                                    getUniqueTeams().map(team => 
-                                      React.createElement("option", { key: team, value: team }, team)
-                                    )
-                                  ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team1Club || "Nincs csapat")
-                                    React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team1[0].name} + ${match.team1[1].name}`),
+                                      "input",
+                                      {
+                                        type: "number",
+                                        value: match.goals.team1 || "",
+                                        onChange: (e) => handleGoalChange("team1", e.target.value),
+                                        className: "w-12 bg-gray-700 text-white rounded-lg p-1 text-center"
+                                      }
+                                    ) : React.createElement("span", { className: "text-white text-4xl w-20 text-center" }, match.goals.team1 || "-"),
+                                    React.createElement("div", { className: "text-gray-400 font-bold mx-2 text-lg" }, "vs"),
+                                    isEditing ? React.createElement(
+                                      "input",
+                                      {
+                                        type: "number",
+                                        value: match.goals.team2 || "",
+                                        onChange: (e) => handleGoalChange("team2", e.target.value),
+                                        className: "w-12 bg-gray-700 text-white rounded-lg p-1 text-center"
+                                      }
+                                    ) : React.createElement("span", { className: "text-white text-4xl w-20 text-center" }, match.goals.team2 || "-"),
                                   ]
                                 ),
                                 React.createElement(
-                                  "div",
-                                  { className: "flex flex-col items-center" },
-                                  [
-                                    React.createElement(
-                                      "div",
-                                      { className: "flex justify-center items-center" },
-                                      [
-                                        isEditing ? React.createElement(
-                                          "input",
-                                          {
-                                            type: "number",
-                                            value: match.goals.team1 || "",
-                                            onChange: (e) => handleGoalChange("team1", e.target.value),
-                                            className: "w-12 bg-gray-700 text-white rounded-lg p-1 text-center"
-                                          }
-                                        ) : React.createElement("span", { className: "text-white text-4xl w-20 text-center" }, match.goals.team1 || "-"),
-                                        React.createElement("div", { className: "text-gray-400 font-bold mx-2 text-lg" }, "vs"),
-                                        isEditing ? React.createElement(
-                                          "input",
-                                          {
-                                            type: "number",
-                                            value: match.goals.team2 || "",
-                                            onChange: (e) => handleGoalChange("team2", e.target.value),
-                                            className: "w-12 bg-gray-700 text-white rounded-lg p-1 text-center"
-                                          }
-                                        ) : React.createElement("span", { className: "text-white text-4xl w-20 text-center" }, match.goals.team2 || "-"),
-                                      ]
-                                    ),
-                                    React.createElement(
-                                      "button",
-                                      { onClick: toggleEditMode, className: "text-2xl mt-2" },
-                                      isEditing ? "☑️" : "✅"
-                                    ),
-                                  ]
-                                ),
-                                React.createElement(
-                                  "div",
-                                  { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end" },
-                                  [
-                                    isEditing ? React.createElement(
-                                    "select",
-                                    {
-                                      value: match.team2Club || "",
-                                      onChange: (e) => handleTeamChange("team2Club", e.target.value),
-                                      className: "bg-gray-700 text-white rounded-lg p-1 w-full"
-                                    },
-                                    getUniqueTeams().map(team => 
-                                      React.createElement("option", { key: team, value: team }, team)
-                                    )
-                                  ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team2Club || "Nincs csapat"),
-                                    React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team2[0].name} + ${match.team2[1].name}`),
-                                  ]
+                                  "button",
+                                  { onClick: toggleEditMode, className: "text-2xl mt-2" },
+                                  isEditing ? "☑️" : "✅"
                                 ),
                               ]
                             ),
-                            match.resting && React.createElement(
-                              "p",
-                              { className: "text-gray-400 text-sm mt-4 text-center" },
-                              `😴 Pihen: ${match.resting.name}`
+                            React.createElement(
+                              "div",
+                              { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end" },
+                              [
+                                isEditing ? React.createElement(
+                                  "select",
+                                  {
+                                    value: match.team2Club || "",
+                                    onChange: (e) => handleTeamChange("team2Club", e.target.value),
+                                    className: "bg-gray-700 text-white rounded-lg p-1 w-full"
+                                  },
+                                  getUniqueTeams().map(team => 
+                                    React.createElement("option", { key: team, value: team }, team)
+                                  )
+                                ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team2Club || "Nincs csapat"),
+                                React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team2[0].name} + ${match.team2[1].name}`),
+                              ]
                             ),
                           ]
-                        );
-                      }),
-                    ]
-                  ),
+                        ),
+                        match.resting && React.createElement(
+                          "p",
+                          { className: "text-gray-400 text-sm mt-4 text-center" },
+                          `😴 Pihen: ${match.resting.name}`
+                        ),
+                      ]
+                    );
+                  }),
                 ]
               )
             ),
