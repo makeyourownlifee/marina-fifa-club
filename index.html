@@ -83,6 +83,7 @@
       { id: 3, name: "Peti", avatar: null },
       { id: 4, name: "Lacus", avatar: null },
       { id: 5, name: "Benyó", avatar: null },
+      { id: 6, name: "B-imi", avatar: null },
     ];
 
     const initialTeams = [
@@ -101,7 +102,7 @@
       "Augsburg", "Bayern Munich", "Borussia Dortmund", "Borussia Mönchengladbach",
       "Eintracht Frankfurt", "Freiburg", "Heidenheim", "Hoffenheim",
       "Holstein Kiel", "Mainz", "RB Leipzig", "St. Pauli", "Stuttgart",
-      "Union Berlin", "Werder Bremen", "Wolfsburg", "Bochum", "Köln",
+      "Union Berlin", "Werder Bremen", "Wolfsburg", "Bochum", "Köln", "Bayer Leverkusen",
       // French Ligue 1 (18 teams)
       "Angers", "Auxerre", "Brest", "Le Havre", "Lens",
       "Lille", "Lyon", "Marseille", "Monaco", "Montpellier",
@@ -220,7 +221,7 @@
         }))
         .filter(team => teamStats[team.name].matches >= 1)
         .sort((a, b) => b.winRate - a.winRate)
-        .slice(0, 5);
+        .slice(0, 10);
 
       return topTeams;
     };
@@ -350,24 +351,24 @@
               "div",
               { className: "mt-8" },
               [
-                React.createElement("h2", { className: "text-2xl font-bold text-white" }, "TOP FIFA Csapatok"),
                 topTeams.length > 0 ? React.createElement(
-                  "div",
-                  { className: "mt-4 grid grid-cols-3 gap-2 text-gray-400 text-sm" },
-                  [
-                    React.createElement("span", { className: "font-bold" }, "Csapat"),
-                    React.createElement("span", { className: "font-bold text-center" }, "Győzelmi arány"),
-                    React.createElement("span", { className: "font-bold text-center" }, "xG (gól/meccs)"),
-                    ...topTeams.flatMap((team, index) => [
-                      React.createElement("span", { key: `team-${index}-name`, className: "text-white" }, team.name),
-                      React.createElement("span", { key: `team-${index}-winrate`, className: "text-center" }, 
-                        React.createElement("span", { className: "font-bold" }, team.winRate.toFixed(1)), `% (${team.wins}/${team.matches})`
-                      ),
-                      React.createElement("span", { key: `team-${index}-xg`, className: "text-center" }, team.xG.toFixed(2)),
-                    ]),
-                  ]
-                ) : React.createElement("p", { className: "mt-4 text-gray-400" }, "Még nincs elég adat a statisztikához. Játssz néhány meccset!")
-              ]
+                "div",
+                { className: "mt-4 grid grid-cols-4 gap-2 text-gray-400 text-sm" },
+                [
+                  React.createElement("span", { className: "font-bold" }, "Csapat"),
+                  React.createElement("span", { className: "font-bold text-center" }, "Össz. meccsek"),
+                  React.createElement("span", { className: "font-bold text-center" }, "Győzelmek"),
+                  React.createElement("span", { className: "font-bold text-center" }, "xG"),
+                  ...topTeams.flatMap((team, index) => [
+                    React.createElement("span", { key: `team-${index}-name`, className: "text-white" }, team.name),
+                    React.createElement("span", { key: `team-${index}-matches`, className: "text-center text-pink-500 font-bold" }, team.matches),
+                    React.createElement("span", { key: `team-${index}-wins`, className: "text-center text-pink-500 font-bold" }, 
+                      `${team.wins} (${team.winRate.toFixed(1)}%)`
+                    ),
+                    React.createElement("span", { key: `team-${index}-xg`, className: "text-center" }, team.xG.toFixed(2)),
+                  ]),
+                ]
+              ) : React.createElement("p", { className: "mt-4 text-gray-400" }, "Még nincs elég adat a statisztikához. Játssz néhány meccset!")              ]
             ),
           ]
         )
