@@ -1023,6 +1023,11 @@ calculateSerialNumbers(diceGames).forEach(({ item, serial }) => {
       const [selectedDiceGame, setSelectedDiceGame] = useState(null);
       const [scrollPosition, setScrollPosition] = useState(0);
       const [editModes, setEditModes] = useState({});
+      const [editModes, setEditModes] = useState({});
+      const getUniqueTeams = () => {
+        const allTeams = tournaments.flatMap(t => t.matches.flatMap(m => [m.team1Club, m.team2Club]));
+        return [...new Set(allTeams.filter(team => team))];
+      };
 
       const calculatePlayerStats = (matches) => {
         const stats = {};
@@ -1233,16 +1238,16 @@ calculateSerialNumbers(diceGames).forEach(({ item, serial }) => {
                                   { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start" },
                                   [
                                     isEditing ? React.createElement(
-                                      "select",
-                                      {
-                                        value: match.team1Club || "",
-                                        onChange: (e) => handleTeamChange("team1Club", e.target.value),
-                                        className: "bg-gray-700 text-white rounded-lg p-1 w-full"
-                                      },
-                                      ["Csapat 1", "Csapat 2", "Csapat 3", "Csapat 4", "Csapat 5"].map(team => 
-                                        React.createElement("option", { key: team, value: team }, team)
-                                      )
-                                    ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team1Club || "Nincs csapat"),
+                                    "select",
+                                    {
+                                      value: match.team1Club || "",
+                                      onChange: (e) => handleTeamChange("team1Club", e.target.value),
+                                      className: "bg-gray-700 text-white rounded-lg p-1 w-full"
+                                    },
+                                    getUniqueTeams().map(team => 
+                                      React.createElement("option", { key: team, value: team }, team)
+                                    )
+                                  ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team1Club || "Nincs csapat")
                                     React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team1[0].name} + ${match.team1[1].name}`),
                                   ]
                                 ),
@@ -1287,16 +1292,16 @@ calculateSerialNumbers(diceGames).forEach(({ item, serial }) => {
                                   { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end" },
                                   [
                                     isEditing ? React.createElement(
-                                      "select",
-                                      {
-                                        value: match.team2Club || "",
-                                        onChange: (e) => handleTeamChange("team2Club", e.target.value),
-                                        className: "bg-gray-700 text-white rounded-lg p-1 w-full"
-                                      },
-                                      ["Csapat 1", "Csapat 2", "Csapat 3", "Csapat 4", "Csapat 5"].map(team => 
-                                        React.createElement("option", { key: team, value: team }, team)
-                                      )
-                                    ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team2Club || "Nincs csapat"),
+                                    "select",
+                                    {
+                                      value: match.team2Club || "",
+                                      onChange: (e) => handleTeamChange("team2Club", e.target.value),
+                                      className: "bg-gray-700 text-white rounded-lg p-1 w-full"
+                                    },
+                                    getUniqueTeams().map(team => 
+                                      React.createElement("option", { key: team, value: team }, team)
+                                    )
+                                  ) : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team2Club || "Nincs csapat"),
                                     React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team2[0].name} + ${match.team2[1].name}`),
                                   ]
                                 ),
