@@ -45,6 +45,23 @@ app.post('/api/tournaments', async (req, res) => {
   }
 });
 
+app.put('/api/tournaments/:timestamp', async (req, res) => {
+  try {
+    const { timestamp } = req.params;
+    const { matches } = req.body;
+    if (!timestamp || !matches) return res.status(400).send('Hiányzó adat');
+    const result = await tournamentsCollection.updateOne(
+      { timestamp: timestamp },
+      { $set: { matches: matches } }
+    );
+    if (result.matchedCount === 0) return res.status(404).send('Nem található');
+    res.sendStatus(200);
+  } catch (error) {
+    console.error('Hiba a frissítéskor:', error);
+    res.status(500).send('Szerver hiba');
+  }
+});
+
 app.get('/api/diceGames', async (req, res) => {
   try {
     const diceGames = await diceGamesCollection.find({}).toArray();
