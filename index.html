@@ -1010,6 +1010,15 @@
       const sortedByDate = [...items].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       return sortedByDate.map((item, index) => ({ item, serial: index + 1 }));
     };
+      const tournamentSerialMap = {};
+calculateSerialNumbers(tournaments).forEach(({ item, serial }) => {
+  tournamentSerialMap[item.timestamp] = serial;
+});
+
+const diceGameSerialMap = {};
+calculateSerialNumbers(diceGames).forEach(({ item, serial }) => {
+  diceGameSerialMap[item.timestamp] = serial;
+});
       const [selectedTournament, setSelectedTournament] = useState(null);
       const [selectedDiceGame, setSelectedDiceGame] = useState(null);
       const [scrollPosition, setScrollPosition] = useState(0);
@@ -1111,28 +1120,28 @@
               React.createElement(
                 "div",
                 { className: "mt-6 space-y-4" },
-                viewMode === "fifa" ? calculateSerialNumbers(tournaments).map(({ item, serial }, index) =>
+                viewMode === "fifa" ? sortedTournaments.map((tournament, index) =>
                   React.createElement(
                     "div",
                     {
                       key: `tournament-${index}`,
                       className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
-                      onClick: () => handleOpenModal(item, "tournament")
+                      onClick: () => handleOpenModal(tournament, "tournament")
                     },
                     React.createElement("p", { className: "text-gray-400" }, 
-                      React.createElement("span", { className: "text-white font-bold" }, `#${serial}.`), ` - ${new Date(item.timestamp).toLocaleString("hu-HU")}`
+                      React.createElement("span", { className: "text-white font-bold" }, `#${tournamentSerialMap[tournament.timestamp]}`), ` - ${new Date(tournament.timestamp).toLocaleString("hu-HU")}`
                     )
                   )
-                ) : calculateSerialNumbers(diceGames).map(({ item, serial }, index) =>
+                ) : sortedDiceGames.map((diceGame, index) =>
                   React.createElement(
                     "div",
                     {
                       key: `dicegame-${index}`,
                       className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
-                      onClick: () => handleOpenModal(item, "dicegame")
+                      onClick: () => handleOpenModal(diceGame, "dicegame")
                     },
                     React.createElement("p", { className: "text-gray-400" }, 
-                      React.createElement("span", { className: "text-white font-bold" }, `#${serial}.`), ` - ${new Date(item.timestamp).toLocaleString("hu-HU")}`
+                      React.createElement("span", { className: "text-white font-bold" }, `#${diceGameSerialMap[diceGame.timestamp]}`), ` - ${new Date(diceGame.timestamp).toLocaleString("hu-HU")}`
                     )
                   )
                 )
