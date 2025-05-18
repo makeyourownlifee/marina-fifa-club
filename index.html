@@ -1090,6 +1090,7 @@
 
   const handleTeamSearch = (matchId, team, value) => {
     const sanitizedValue = value || "";
+    console.log("handleTeamSearch called with:", { matchId, team, value: sanitizedValue, teams });
     setTeamSearch(prev => ({ ...prev, [`${matchId}-${team}`]: sanitizedValue }));
     setShowSuggestions(prev => ({ ...prev, [`${matchId}-${team}`]: sanitizedValue.length > 0 }));
 
@@ -1111,8 +1112,7 @@
 
   const selectTeam = (matchId, team, selectedTeam) => {
     if (selectedTournament) {
-      // Validáció: csak a teams listában lévő nevek engedélyezettek
-      const isValidTeam = teams && teams.includes(selectedTeam);
+      const isValidTeam = Array.isArray(teams) && teams.includes(selectedTeam);
       if (!isValidTeam) {
         alert("Érvénytelen csapatnév! Kérlek, válassz a javasolt csapatok közül.");
         return;
@@ -1384,7 +1384,7 @@
                                                       },
                                                       team
                                                     )
-                                                  )
+                                                  ) || null
                                               ),
                                           ]
                                         )
@@ -1497,7 +1497,7 @@
                                                       },
                                                       team
                                                     )
-                                                  )
+                                                  ) || null
                                               ),
                                           ]
                                         )
