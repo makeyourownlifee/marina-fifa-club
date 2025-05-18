@@ -1111,6 +1111,13 @@
 
   const selectTeam = (matchId, team, selectedTeam) => {
     if (selectedTournament) {
+      // Validáció: csak a teams listában lévő nevek engedélyezettek
+      const isValidTeam = teams && teams.includes(selectedTeam);
+      if (!isValidTeam) {
+        alert("Érvénytelen csapatnév! Kérlek, válassz a javasolt csapatok közül.");
+        return;
+      }
+
       const updatedMatches = selectedTournament.matches.map(match =>
         match.id === matchId
           ? { ...match, [team]: selectedTeam }
@@ -1352,14 +1359,14 @@
                                               className:
                                                 "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
                                             }),
-                                            (teams && teams.length > 0 && showSuggestions[`${match.id}-team1Club`]) &&
+                                            (Array.isArray(teams) && teams.length > 0 && showSuggestions[`${match.id}-team1Club`]) &&
                                               React.createElement(
                                                 "div",
                                                 {
                                                   className:
                                                     "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto",
                                                 },
-                                                (teams || [])
+                                                teams
                                                   .filter(team =>
                                                     team
                                                       ?.toLowerCase()
@@ -1465,14 +1472,14 @@
                                               className:
                                                 "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
                                             }),
-                                            (teams && teams.length > 0 && showSuggestions[`${match.id}-team2Club`]) &&
+                                            (Array.isArray(teams) && teams.length > 0 && showSuggestions[`${match.id}-team2Club`]) &&
                                               React.createElement(
                                                 "div",
                                                 {
                                                   className:
                                                     "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto",
                                                 },
-                                                (teams || [])
+                                                teams
                                                   .filter(team =>
                                                     team
                                                       ?.toLowerCase()
