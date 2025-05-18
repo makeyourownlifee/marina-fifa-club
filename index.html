@@ -1004,7 +1004,7 @@
       );
     };
 
-    const Rounds = ({ tournaments, diceGames, players, setTournaments, teams }) => {
+   const Rounds = ({ tournaments, diceGames, players, setTournaments, teams }) => {
   const [viewMode, setViewMode] = useState("fifa");
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [selectedDiceGame, setSelectedDiceGame] = useState(null);
@@ -1062,7 +1062,6 @@
   const handleOpenModal = (item, type) => {
     setScrollPosition(window.scrollY);
     if (type === "tournament") {
-      // Biztosítjuk, hogy a meccsobjektumok megfelelő szerkezettel rendelkezzenek
       const safeMatches = item.matches.map(match => ({
         ...match,
         team1Club: match.team1Club || "",
@@ -1082,24 +1081,32 @@
         setTournaments(data);
         setSelectedTournament(null);
         setSelectedDiceGame(null);
-        setTeamSearch({}); // Töröljük a keresési állapotot
-        setShowSuggestions({}); // Töröljük a javaslatok állapotát
+        setTeamSearch({});
+        setShowSuggestions({});
         window.scrollTo(0, scrollPosition);
       })
       .catch(console.error);
   };
 
   const handleTeamSearch = (matchId, team, value) => {
-    setTeamSearch(prev => ({ ...prev, [`${matchId}-${team}`]: value }));
-    setShowSuggestions(prev => ({ ...prev, [`${matchId}-${team}`]: value !== "" }));
+    // Stabil állapotfrissítés üres vagy részleges értékekkel
+    const sanitizedValue = value || "";
+    setTeamSearch(prev => ({ ...prev, [`${matchId}-${team}`]: sanitizedValue }));
+    setShowSuggestions(prev => ({ ...prev, [`${matchId}-${team}`]: sanitizedValue.length > 0 }));
 
     if (selectedTournament) {
       const updatedMatches = selectedTournament.matches.map(match =>
         match.id === matchId
-          ? { ...match, [team]: value === "" ? "" : match[team] }
+          ? {
+              ...match,
+              [team]: sanitizedValue.length > 0 ? sanitizedValue : match[team] || "",
+            }
           : match
       );
-      setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
+      setSelectedTournament(prev => ({
+        ...prev,
+        matches: updatedMatches,
+      }));
     }
   };
 
