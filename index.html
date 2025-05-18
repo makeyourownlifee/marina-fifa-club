@@ -1004,28 +1004,29 @@
       );
     };
 
-    const Rounds = ({ tournaments, diceGames, players, setTournaments, teams }) => { // teams prop hozzáadva
+    const Rounds = ({ tournaments, diceGames, players, setTournaments, teams }) => {
   const [viewMode, setViewMode] = useState("fifa");
-  const calculateSerialNumbers = (items) => {
-    const sortedByDate = [...items].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    return sortedByDate.map((item, index) => ({ item, serial: index + 1 }));
-  };
-  const tournamentSerialMap = {};
-  calculateSerialNumbers(tournaments).forEach(({ item, serial }) => {
-    tournamentSerialMap[item.timestamp] = serial;
-  });
-  const diceGameSerialMap = {};
-  calculateSerialNumbers(diceGames).forEach(({ item, serial }) => {
-    diceGameSerialMap[item.timestamp] = serial;
-  });
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [selectedDiceGame, setSelectedDiceGame] = useState(null);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [editModes, setEditModes] = useState({});
-
-  // Új állapotok a kereséshez (minden meccs külön keresőmezővel rendelkezik)
   const [teamSearch, setTeamSearch] = useState({});
   const [showSuggestions, setShowSuggestions] = useState({});
+
+  const calculateSerialNumbers = (items) => {
+    const sortedByDate = [...items].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    return sortedByDate.map((item, index) => ({ item, serial: index + 1 }));
+  };
+
+  const tournamentSerialMap = {};
+  calculateSerialNumbers(tournaments).forEach(({ item, serial }) => {
+    tournamentSerialMap[item.timestamp] = serial;
+  });
+
+  const diceGameSerialMap = {};
+  calculateSerialNumbers(diceGames).forEach(({ item, serial }) => {
+    diceGameSerialMap[item.timestamp] = serial;
+  });
 
   const calculatePlayerStats = (matches) => {
     const stats = {};
@@ -1047,19 +1048,31 @@
         if (goals2 > goals1) stats[playerId].wins += 1;
       });
     });
-    return Object.keys(stats).map(playerId => ({
-      player: players.find(p => p.id === parseInt(playerId)),
-      wins: stats[playerId].wins,
-      goalsScored: stats[playerId].goalsScored,
-      goalsConceded: stats[playerId].goalsConceded,
-      goalDifference: stats[playerId].goalsScored - stats[playerId].goalsConceded,
-    })).sort((a, b) => (b.wins !== a.wins ? b.wins - a.wins : b.goalDifference - a.goalDifference));
+    return Object.keys(stats)
+      .map(playerId => ({
+        player: players.find(p => p.id === parseInt(playerId)),
+        wins: stats[playerId].wins,
+        goalsScored: stats[playerId].goalsScored,
+        goalsConceded: stats[playerId].goalsConceded,
+        goalDifference: stats[playerId].goalsScored - stats[playerId].goalsConceded,
+      }))
+      .sort((a, b) => (b.wins !== a.wins ? b.wins - a.wins : b.goalDifference - a.goalDifference));
   };
 
   const handleOpenModal = (item, type) => {
     setScrollPosition(window.scrollY);
-    if (type === "tournament") setSelectedTournament(item);
-    else setSelectedDiceGame(item);
+    if (type === "tournament") {
+      // Biztosítjuk, hogy a meccsobjektumok megfelelő szerkezettel rendelkezzenek
+      const safeMatches = item.matches.map(match => ({
+        ...match,
+        team1Club: match.team1Club || "",
+        team2Club: match.team2Club || "",
+        goals: { team1: match.goals.team1 || "", team2: match.goals.team2 || "" },
+      }));
+      setSelectedTournament({ ...item, matches: safeMatches });
+    } else {
+      setSelectedDiceGame(item);
+    }
   };
 
   const handleCloseModal = () => {
@@ -1069,34 +1082,53 @@
         setTournaments(data);
         setSelectedTournament(null);
         setSelectedDiceGame(null);
+        setTeamSearch({}); // Töröljük a keresési állapotot
+        setShowSuggestions({}); // Töröljük a javaslatok állapotát
         window.scrollTo(0, scrollPosition);
       })
       .catch(console.error);
   };
 
-  const sortedTournaments = [...tournaments].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  const sortedDiceGames = [...diceGames].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-  // Szűrőlogika a csapatokhoz
   const handleTeamSearch = (matchId, team, value) => {
-    setTeamSearch({ ...teamSearch, [`${matchId}-${team}`]: value });
-    setShowSuggestions({ ...showSuggestions, [`${matchId}-${team}`]: value !== "" });
-    if (value === "") {
-      const updatedMatches = [...selectedTournament.matches];
-      const matchIndex = updatedMatches.findIndex(match => match.id === matchId);
-      updatedMatches[matchIndex] = { ...updatedMatches[matchIndex], [team]: "" };
+    setTeamSearch(prev => ({ ...prev, [`${matchId}-${team}`]: value }));
+    setShowSuggestions(prev => ({ ...prev, [`${matchId}-${team}`]: value !== "" }));
+
+    if (selectedTournament) {
+      const updatedMatches = selectedTournament.matches.map(match =>
+        match.id === matchId
+          ? { ...match, [team]: value === "" ? "" : match[team] }
+          : match
+      );
       setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
     }
   };
 
   const selectTeam = (matchId, team, selectedTeam) => {
-    const updatedMatches = [...selectedTournament.matches];
-    const matchIndex = updatedMatches.findIndex(match => match.id === matchId);
-    updatedMatches[matchIndex] = { ...updatedMatches[matchIndex], [team]: selectedTeam };
-    setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
-    setTeamSearch({ ...teamSearch, [`${matchId}-${team}`]: selectedTeam });
-    setShowSuggestions({ ...showSuggestions, [`${matchId}-${team}`]: false });
+    if (selectedTournament) {
+      const updatedMatches = selectedTournament.matches.map(match =>
+        match.id === matchId
+          ? { ...match, [team]: selectedTeam }
+          : match
+      );
+      setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
+      setTeamSearch(prev => ({ ...prev, [`${matchId}-${team}`]: selectedTeam }));
+      setShowSuggestions(prev => ({ ...prev, [`${matchId}-${team}`]: false }));
+    }
   };
+
+  const handleGoalChange = (matchId, team, value) => {
+    if (selectedTournament) {
+      const updatedMatches = selectedTournament.matches.map(match =>
+        match.id === matchId
+          ? { ...match, goals: { ...match.goals, [team]: value } }
+          : match
+      );
+      setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
+    }
+  };
+
+  const sortedTournaments = [...tournaments].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const sortedDiceGames = [...diceGames].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
   return React.createElement(
     "div",
@@ -1132,281 +1164,405 @@
           React.createElement(
             "div",
             { className: "mt-6 space-y-4" },
-            viewMode === "fifa" ? sortedTournaments.map((tournament, index) =>
-              React.createElement(
-                "div",
-                {
-                  key: `tournament-${index}`,
-                  className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
-                  onClick: () => handleOpenModal(tournament, "tournament")
-                },
-                React.createElement("p", { className: "text-gray-400" }, 
-                  React.createElement("span", { className: "text-white font-bold" }, `#${tournamentSerialMap[tournament.timestamp]}`), ` - ${new Date(tournament.timestamp).toLocaleString("hu-HU")}`
+            viewMode === "fifa"
+              ? sortedTournaments.map((tournament, index) =>
+                  React.createElement(
+                    "div",
+                    {
+                      key: `tournament-${index}`,
+                      className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
+                      onClick: () => handleOpenModal(tournament, "tournament")
+                    },
+                    React.createElement(
+                      "p",
+                      { className: "text-gray-400" },
+                      [
+                        React.createElement(
+                          "span",
+                          { className: "text-white font-bold" },
+                          `#${tournamentSerialMap[tournament.timestamp]}`
+                        ),
+                        ` - ${new Date(tournament.timestamp).toLocaleString("hu-HU")}`,
+                      ]
+                    )
+                  )
                 )
-              )
-            ) : sortedDiceGames.map((diceGame, index) =>
-              React.createElement(
-                "div",
-                {
-                  key: `dicegame-${index}`,
-                  className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
-                  onClick: () => handleOpenModal(diceGame, "dicegame")
-                },
-                React.createElement("p", { className: "text-gray-400" }, 
-                  React.createElement("span", { className: "text-white font-bold" }, `#${diceGameSerialMap[diceGame.timestamp]}`), ` - ${new Date(diceGame.timestamp).toLocaleString("hu-HU")}`
+              : sortedDiceGames.map((diceGame, index) =>
+                  React.createElement(
+                    "div",
+                    {
+                      key: `dicegame-${index}`,
+                      className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
+                      onClick: () => handleOpenModal(diceGame, "dicegame")
+                    },
+                    React.createElement(
+                      "p",
+                      { className: "text-gray-400" },
+                      [
+                        React.createElement(
+                          "span",
+                          { className: "text-white font-bold" },
+                          `#${diceGameSerialMap[diceGame.timestamp]}`
+                        ),
+                        ` - ${new Date(diceGame.timestamp).toLocaleString("hu-HU")}`,
+                      ]
+                    )
+                  )
                 )
-              )
-            )
           ),
-          selectedTournament && React.createElement(
-            "div",
-            { className: "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4" },
+          selectedTournament &&
             React.createElement(
               "div",
-              { className: "bg-gray-900 p-6 rounded-2xl w-full max-w-lg modal-content relative" },
-              [
-                React.createElement(
-                  "button",
-                  {
-                    onClick: () => {
-                      const isAnyEditing = Object.values(editModes).some(mode => mode === true);
-                      if (isAnyEditing) {
-                        alert("Kérlek, fejezd be az összes szerkesztést (✅ legyen mindenhol)!");
-                        return;
-                      }
-                      console.log("Timestamp sent to server:", selectedTournament.timestamp);
-                      console.log("PUT request data:", { matches: selectedTournament.matches });
-                      fetch(`/api/tournaments/${selectedTournament.timestamp}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ matches: selectedTournament.matches })
-                      }).then(response => {
-                        console.log("PUT response status:", response.status);
-                        if (response.ok) {
-                          setTournaments(tournaments.map(t => t.timestamp === selectedTournament.timestamp ? { ...t, matches: selectedTournament.matches } : t));
-                        } else {
-                          console.error("PUT request failed with status:", response.status);
+              { className: "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4" },
+              React.createElement(
+                "div",
+                { className: "bg-gray-900 p-6 rounded-2xl w-full max-w-lg modal-content relative" },
+                [
+                  React.createElement(
+                    "button",
+                    {
+                      onClick: () => {
+                        const isAnyEditing = Object.values(editModes).some(mode => mode);
+                        if (isAnyEditing) {
+                          alert("Kérlek, fejezd be az összes szerkesztést (✅ legyen mindenhol)!");
+                          return;
                         }
-                      }).catch(error => console.error("PUT request error:", error));
-                      handleCloseModal();
+                        fetch(`/api/tournaments/${selectedTournament.timestamp}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ matches: selectedTournament.matches }),
+                        })
+                          .then(response => {
+                            if (response.ok) {
+                              setTournaments(
+                                tournaments.map(t =>
+                                  t.timestamp === selectedTournament.timestamp
+                                    ? { ...t, matches: selectedTournament.matches }
+                                    : t
+                                )
+                              );
+                            }
+                          })
+                          .catch(error => console.error("PUT request error:", error));
+                        handleCloseModal();
+                      },
+                      className: "absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300"
                     },
-                    className: "absolute top-4 right-4 text-white text-3xl font-bold hover:text-gray-300"
-                  },
-                  "✖"
-                ),
-                React.createElement("h3", { className: "text-2xl font-bold text-white" }, `Bajnokság - ${new Date(selectedTournament.timestamp).toLocaleString("hu-HU")}`),
-                React.createElement(
-                  "div",
-                  { className: "mt-4 space-y-6" },
-                  [
-                    React.createElement(
-                      "div",
-                      { className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
-                      [
-                        React.createElement("h4", { className: "text-lg font-bold text-white" }, "Összesített statisztika"),
-                        React.createElement(
-                          "div",
-                          { className: "grid grid-cols-5 gap-2 text-gray-400 text-sm mt-2" },
-                          [
-                            React.createElement("span", { className: "font-bold" }, "Helyezés"),
-                            React.createElement("span", { className: "font-bold" }, "Játékos"),
-                            React.createElement("span", { className: "font-bold text-center" }, "Győzelmek"),
-                            React.createElement("span", { className: "font-bold text-center" }, "Lőtt gól"),
-                            React.createElement("span", { className: "font-bold text-center" }, "Kapott gól"),
-                            ...calculatePlayerStats(selectedTournament.matches).map((stat, index) => [
-                              React.createElement("span", { key: `stat-${index}-pos`, className: "text-pink-500 font-bold" }, `${index + 1}.`),
-                              React.createElement("span", { key: `stat-${index}-name` }, stat.player ? stat.player.name : "Ismeretlen"),
-                              React.createElement("span", { key: `stat-${index}-wins`, className: "text-center text-pink-500 font-bold" }, stat.wins),
-                              React.createElement("span", { key: `stat-${index}-gs`, className: "text-center" }, stat.goalsScored),
-                              React.createElement("span", { key: `stat-${index}-gc`, className: "text-center" }, stat.goalsConceded),
-                            ]),
-                          ]
-                        ),
-                      ]
-                    ),
-                    selectedTournament.matches.map((match, index) => {
-                      const isEditing = editModes[index] || false;
-                      const toggleEditMode = () => setEditModes(prev => ({ ...prev, [index]: !prev[index] }));
-                      const handleGoalChange = (team, value) => {
-                        const updatedMatches = [...selectedTournament.matches];
-                        updatedMatches[index] = { ...updatedMatches[index], goals: { ...updatedMatches[index].goals, [team]: value } };
-                        setSelectedTournament({ ...selectedTournament, matches: updatedMatches });
-                      };
-
-                      return React.createElement(
+                    "✖"
+                  ),
+                  React.createElement(
+                    "h3",
+                    { className: "text-2xl font-bold text-white" },
+                    `Bajnokság - ${new Date(selectedTournament.timestamp).toLocaleString("hu-HU")}`
+                  ),
+                  React.createElement(
+                    "div",
+                    { className: "mt-4 space-y-6" },
+                    [
+                      React.createElement(
                         "div",
-                        { key: match.id, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
+                        { className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
                         [
-                          React.createElement("h4", { className: "text-gray-400 text-sm text-center font-medium" }, `#${index + 1}`),
+                          React.createElement(
+                            "h4",
+                            { className: "text-lg font-bold text-white" },
+                            "Összesített statisztika"
+                          ),
                           React.createElement(
                             "div",
-                            { className: "flex flex-col sm:flex-row justify-between items-center mt-4 space-y-4 sm:space-y-0 sm:space-x-4" },
+                            { className: "grid grid-cols-5 gap-2 text-gray-400 text-sm mt-2" },
                             [
-                              React.createElement(
-                                "div",
-                                { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start" },
-                                [
-                                  isEditing ? [
-                                    React.createElement(
-                                      "div",
-                                      { className: "relative w-full" },
-                                      [
-                                        React.createElement("input", {
-                                          type: "text",
-                                          value: teamSearch[`${match.id}-team1Club`] || match.team1Club || "",
-                                          onChange: (e) => handleTeamSearch(match.id, "team1Club", e.target.value),
-                                          placeholder: "Csapat keresése...",
-                                          className: "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                                        }),
-                                        showSuggestions[`${match.id}-team1Club`] && React.createElement(
-                                          "div",
-                                          { className: "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto" },
-                                          teams
-                                            .filter(team => team.toLowerCase().includes((teamSearch[`${match.id}-team1Club`] || "").toLowerCase()))
-                                            .slice(0, 5)
-                                            .map(team =>
-                                              React.createElement(
-                                                "div",
-                                                {
-                                                  key: `${match.id}-team1-club-${team}`,
-                                                  onClick: () => selectTeam(match.id, "team1Club", team),
-                                                  className: "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer"
-                                                },
-                                                team
-                                              )
-                                            )
-                                        ),
-                                      ]
-                                    ),
-                                  ] : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team1Club || "Nincs csapat"),
-                                  React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team1[0].name} + ${match.team1[1].name}`),
-                                ]
-                              ),
-                              React.createElement(
-                                "div",
-                                { className: "flex flex-col items-center" },
-                                [
-                                  React.createElement(
-                                    "div",
-                                    { className: "flex justify-center items-center" },
-                                    [
-                                      isEditing ? React.createElement(
-                                        "input",
-                                        {
-                                          type: "number",
-                                          value: match.goals.team1 || "",
-                                          onChange: (e) => handleGoalChange("team1", e.target.value),
-                                          className: "w-12 bg-gray-700 text-white rounded-lg p-1 text-center"
-                                        }
-                                      ) : React.createElement("span", { className: "text-white text-4xl w-20 text-center" }, match.goals.team1 || "-"),
-                                      React.createElement("div", { className: "text-gray-400 font-bold mx-2 text-lg" }, "vs"),
-                                      isEditing ? React.createElement(
-                                        "input",
-                                        {
-                                          type: "number",
-                                          value: match.goals.team2 || "",
-                                          onChange: (e) => handleGoalChange("team2", e.target.value),
-                                          className: "w-12 bg-gray-700 text-white rounded-lg p-1 text-center"
-                                        }
-                                      ) : React.createElement("span", { className: "text-white text-4xl w-20 text-center" }, match.goals.team2 || "-"),
-                                    ]
-                                  ),
-                                  React.createElement(
-                                    "button",
-                                    { onClick: toggleEditMode, className: "text-2xl mt-2" },
-                                    isEditing ? "☑️" : "✅"
-                                  ),
-                                ]
-                              ),
-                              React.createElement(
-                                "div",
-                                { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end" },
-                                [
-                                  isEditing ? [
-                                    React.createElement(
-                                      "div",
-                                      { className: "relative w-full" },
-                                      [
-                                        React.createElement("input", {
-                                          type: "text",
-                                          value: teamSearch[`${match.id}-team2Club`] || match.team2Club || "",
-                                          onChange: (e) => handleTeamSearch(match.id, "team2Club", e.target.value),
-                                          placeholder: "Csapat keresése...",
-                                          className: "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
-                                        }),
-                                        showSuggestions[`${match.id}-team2Club`] && React.createElement(
-                                          "div",
-                                          { className: "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto" },
-                                          teams
-                                            .filter(team => team.toLowerCase().includes((teamSearch[`${match.id}-team2Club`] || "").toLowerCase()))
-                                            .slice(0, 5)
-                                            .map(team =>
-                                              React.createElement(
-                                                "div",
-                                                {
-                                                  key: `${match.id}-team2-club-${team}`,
-                                                  onClick: () => selectTeam(match.id, "team2Club", team),
-                                                  className: "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer"
-                                                },
-                                                team
-                                              )
-                                            )
-                                        ),
-                                      ]
-                                    ),
-                                  ] : React.createElement("span", { className: "text-pink-500 font-bold" }, match.team2Club || "Nincs csapat"),
-                                  React.createElement("p", { className: "text-gray-400 text-sm mt-2" }, `${match.team2[0].name} + ${match.team2[1].name}`),
-                                ]
-                              ),
+                              React.createElement("span", { className: "font-bold" }, "Helyezés"),
+                              React.createElement("span", { className: "font-bold" }, "Játékos"),
+                              React.createElement("span", { className: "font-bold text-center" }, "Győzelmek"),
+                              React.createElement("span", { className: "font-bold text-center" }, "Lőtt gól"),
+                              React.createElement("span", { className: "font-bold text-center" }, "Kapott gól"),
+                              ...calculatePlayerStats(selectedTournament.matches).flatMap((stat, index) => [
+                                React.createElement(
+                                  "span",
+                                  { key: `stat-${index}-pos`, className: "text-pink-500 font-bold" },
+                                  `${index + 1}.`
+                                ),
+                                React.createElement(
+                                  "span",
+                                  { key: `stat-${index}-name` },
+                                  stat.player ? stat.player.name : "Ismeretlen"
+                                ),
+                                React.createElement(
+                                  "span",
+                                  { key: `stat-${index}-wins`, className: "text-center text-pink-500 font-bold" },
+                                  stat.wins
+                                ),
+                                React.createElement(
+                                  "span",
+                                  { key: `stat-${index}-gs`, className: "text-center" },
+                                  stat.goalsScored
+                                ),
+                                React.createElement(
+                                  "span",
+                                  { key: `stat-${index}-gc`, className: "text-center" },
+                                  stat.goalsConceded
+                                ),
+                              ]),
                             ]
                           ),
-                          match.resting && React.createElement(
-                            "p",
-                            { className: "text-gray-400 text-sm mt-4 text-center" },
-                            `😴 Pihen: ${match.resting.name}`
+                        ]
+                      ),
+                      selectedTournament.matches.map((match, index) => {
+                        const isEditing = editModes[index] || false;
+                        const toggleEditMode = () => setEditModes(prev => ({ ...prev, [index]: !isEditing }));
+
+                        return React.createElement(
+                          "div",
+                          { key: match.id, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
+                          [
+                            React.createElement(
+                              "h4",
+                              { className: "text-gray-400 text-sm text-center font-medium" },
+                              `#${index + 1}`
+                            ),
+                            React.createElement(
+                              "div",
+                              { className: "flex flex-col sm:flex-row justify-between items-center mt-4 space-y-4 sm:space-y-0 sm:space-x-4" },
+                              [
+                                React.createElement(
+                                  "div",
+                                  { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-start" },
+                                  [
+                                    isEditing
+                                      ? React.createElement(
+                                          "div",
+                                          { className: "relative w-full" },
+                                          [
+                                            React.createElement("input", {
+                                              type: "text",
+                                              value: teamSearch[`${match.id}-team1Club`] || match.team1Club || "",
+                                              onChange: (e) =>
+                                                handleTeamSearch(match.id, "team1Club", e.target.value),
+                                              placeholder: "Csapat keresése...",
+                                              className:
+                                                "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
+                                            }),
+                                            showSuggestions[`${match.id}-team1Club`] &&
+                                              React.createElement(
+                                                "div",
+                                                {
+                                                  className:
+                                                    "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto",
+                                                },
+                                                teams
+                                                  .filter(team =>
+                                                    team
+                                                      .toLowerCase()
+                                                      .includes(
+                                                        (teamSearch[`${match.id}-team1Club`] || "").toLowerCase()
+                                                      )
+                                                  )
+                                                  .slice(0, 5)
+                                                  .map(team =>
+                                                    React.createElement(
+                                                      "div",
+                                                      {
+                                                        key: `${match.id}-team1-club-${team}`,
+                                                        onClick: () => selectTeam(match.id, "team1Club", team),
+                                                        className:
+                                                          "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer",
+                                                      },
+                                                      team
+                                                    )
+                                                  )
+                                              ),
+                                          ]
+                                        )
+                                      : React.createElement(
+                                          "span",
+                                          { className: "text-pink-500 font-bold" },
+                                          match.team1Club || "Nincs csapat"
+                                        ),
+                                    React.createElement(
+                                      "p",
+                                      { className: "text-gray-400 text-sm mt-2" },
+                                      `${match.team1[0].name} + ${match.team1[1].name}`
+                                    ),
+                                  ]
+                                ),
+                                React.createElement(
+                                  "div",
+                                  { className: "flex flex-col items-center" },
+                                  [
+                                    React.createElement(
+                                      "div",
+                                      { className: "flex justify-center items-center" },
+                                      [
+                                        isEditing
+                                          ? React.createElement("input", {
+                                              type: "number",
+                                              value: match.goals.team1 || "",
+                                              onChange: (e) =>
+                                                handleGoalChange(match.id, "team1", e.target.value),
+                                              className:
+                                                "w-12 bg-gray-700 text-white rounded-lg p-1 text-center",
+                                            })
+                                          : React.createElement(
+                                              "span",
+                                              { className: "text-white text-4xl w-20 text-center" },
+                                              match.goals.team1 || "-"
+                                            ),
+                                        React.createElement(
+                                          "div",
+                                          { className: "text-gray-400 font-bold mx-2 text-lg" },
+                                          "vs"
+                                        ),
+                                        isEditing
+                                          ? React.createElement("input", {
+                                              type: "number",
+                                              value: match.goals.team2 || "",
+                                              onChange: (e) =>
+                                                handleGoalChange(match.id, "team2", e.target.value),
+                                              className:
+                                                "w-12 bg-gray-700 text-white rounded-lg p-1 text-center",
+                                            })
+                                          : React.createElement(
+                                              "span",
+                                              { className: "text-white text-4xl w-20 text-center" },
+                                              match.goals.team2 || "-"
+                                            ),
+                                      ]
+                                    ),
+                                    React.createElement(
+                                      "button",
+                                      {
+                                        onClick: toggleEditMode,
+                                        className: "text-2xl mt-2",
+                                      },
+                                      isEditing ? "☑️" : "✅"
+                                    ),
+                                  ]
+                                ),
+                                React.createElement(
+                                  "div",
+                                  { className: "flex-1 min-w-0 max-w-[120px] flex flex-col items-end" },
+                                  [
+                                    isEditing
+                                      ? React.createElement(
+                                          "div",
+                                          { className: "relative w-full" },
+                                          [
+                                            React.createElement("input", {
+                                              type: "text",
+                                              value: teamSearch[`${match.id}-team2Club`] || match.team2Club || "",
+                                              onChange: (e) =>
+                                                handleTeamSearch(match.id, "team2Club", e.target.value),
+                                              placeholder: "Csapat keresése...",
+                                              className:
+                                                "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
+                                            }),
+                                            showSuggestions[`${match.id}-team2Club`] &&
+                                              React.createElement(
+                                                "div",
+                                                {
+                                                  className:
+                                                    "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto",
+                                                },
+                                                teams
+                                                  .filter(team =>
+                                                    team
+                                                      .toLowerCase()
+                                                      .includes(
+                                                        (teamSearch[`${match.id}-team2Club`] || "").toLowerCase()
+                                                      )
+                                                  )
+                                                  .slice(0, 5)
+                                                  .map(team =>
+                                                    React.createElement(
+                                                      "div",
+                                                      {
+                                                        key: `${match.id}-team2-club-${team}`,
+                                                        onClick: () => selectTeam(match.id, "team2Club", team),
+                                                        className:
+                                                          "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer",
+                                                      },
+                                                      team
+                                                    )
+                                                  )
+                                              ),
+                                          ]
+                                        )
+                                      : React.createElement(
+                                          "span",
+                                          { className: "text-pink-500 font-bold" },
+                                          match.team2Club || "Nincs csapat"
+                                        ),
+                                    React.createElement(
+                                      "p",
+                                      { className: "text-gray-400 text-sm mt-2" },
+                                      `${match.team2[0].name} + ${match.team2[1].name}`
+                                    ),
+                                  ]
+                                ),
+                              ]
+                            ),
+                            match.resting &&
+                              React.createElement(
+                                "p",
+                                { className: "text-gray-400 text-sm mt-4 text-center" },
+                                `😴 Pihen: ${match.resting.name}`
+                              ),
+                          ]
+                        );
+                      }),
+                    ]
+                  ),
+                ]
+              )
+            ),
+          selectedDiceGame &&
+            React.createElement(
+              "div",
+              { className: "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4" },
+              React.createElement(
+                "div",
+                { className: "bg-gray-900 p-6 rounded-2xl w-full max-w-lg modal-content" },
+                [
+                  React.createElement(
+                    "button",
+                    {
+                      onClick: handleCloseModal,
+                      className: "absolute top-2 right-2 text-white text-2xl",
+                    },
+                    "✕"
+                  ),
+                  React.createElement(
+                    "h3",
+                    { className: "text-2xl font-bold text-white" },
+                    `Kockajáték - ${new Date(selectedDiceGame.timestamp).toLocaleString("hu-HU")}`
+                  ),
+                  React.createElement(
+                    "div",
+                    { className: "mt-4 space-y-4" },
+                    selectedDiceGame.results.map((result, index) => {
+                      const player = players.find(p => p.id === result.playerId);
+                      return React.createElement(
+                        "div",
+                        { key: `result-${index}`, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
+                        [
+                          React.createElement(
+                            "span",
+                            { className: "text-white font-medium" },
+                            player ? player.name : "Ismeretlen játékos"
+                          ),
+                          React.createElement(
+                            "span",
+                            { className: "text-gray-400 ml-4" },
+                            `${result.position}. helyezett`
                           ),
                         ]
                       );
-                    }),
-                  ]
-                ),
-              ]
-            )
-          ),
-          selectedDiceGame && React.createElement(
-            "div",
-            { className: "fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4" },
-            React.createElement(
-              "div",
-              { className: "bg-gray-900 p-6 rounded-2xl w-full max-w-lg modal-content" },
-              [
-                React.createElement(
-                  "button",
-                  {
-                    onClick: handleCloseModal,
-                    className: "absolute top-2 right-2 text-white text-2xl"
-                  },
-                  "✕"
-                ),
-                React.createElement("h3", { className: "text-2xl font-bold text-white" }, `Kockajáték - ${new Date(selectedDiceGame.timestamp).toLocaleString("hu-HU")}`),
-                React.createElement(
-                  "div",
-                  { className: "mt-4 space-y-4" },
-                  selectedDiceGame.results.map((result, index) => {
-                    const player = players.find(p => p.id === result.playerId);
-                    return React.createElement(
-                      "div",
-                      { key: `result-${index}`, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
-                      [
-                        React.createElement("span", { className: "text-white font-medium" }, player ? player.name : "Ismeretlen játékos"),
-                        React.createElement("span", { className: "text-gray-400 ml-4" }, `${result.position}. helyezett`),
-                      ]
-                    );
-                  })
-                ),
-              ]
-            )
-          ),
+                    })
+                  ),
+                ]
+              )
+            ),
         ]
       ),
     ]
