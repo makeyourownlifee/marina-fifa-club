@@ -1004,7 +1004,7 @@
       );
     };
 
-   const Rounds = ({ tournaments, diceGames, players, setTournaments, teams }) => {
+   const Rounds = ({ tournaments, diceGames, players, setTournaments, teams = [] }) => {
   const [viewMode, setViewMode] = useState("fifa");
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [selectedDiceGame, setSelectedDiceGame] = useState(null);
@@ -1681,12 +1681,12 @@
             ),
           ]
         ),
-      currentPage === "rounds" && React.createElement(Rounds, { tournaments, diceGames, players, setTournaments }), // Hozzáadtam setTournaments
+      currentPage === "rounds" && React.createElement(Rounds, { tournaments, diceGames, players, setTournaments, teams }), // Hozzáadtam a teams propot
       React.createElement(NavBar, { setCurrentPage, currentPage }),
     ]
   );
 };
-
+    
 // Renderelés
 console.log("Starting render");
 try {
