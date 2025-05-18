@@ -1089,7 +1089,6 @@
   };
 
   const handleTeamSearch = (matchId, team, value) => {
-    // Stabil állapotfrissítés üres vagy részleges értékekkel
     const sanitizedValue = value || "";
     setTeamSearch(prev => ({ ...prev, [`${matchId}-${team}`]: sanitizedValue }));
     setShowSuggestions(prev => ({ ...prev, [`${matchId}-${team}`]: sanitizedValue.length > 0 }));
@@ -1153,6 +1152,7 @@
               React.createElement(
                 "button",
                 {
+                  key: "fifa-button",
                   onClick: () => setViewMode("fifa"),
                   className: `px-4 py-2 rounded-2xl ${viewMode === "fifa" ? "bg-pink-500 text-white" : "bg-gray-200 text-gray-800"} hover:bg-pink-400 active:scale-95 transition-all glow`
                 },
@@ -1161,6 +1161,7 @@
               React.createElement(
                 "button",
                 {
+                  key: "dice-button",
                   onClick: () => setViewMode("dice"),
                   className: `px-4 py-2 rounded-2xl ${viewMode === "dice" ? "bg-pink-500 text-white" : "bg-gray-200 text-gray-800"} hover:bg-pink-400 active:scale-95 transition-all glow`
                 },
@@ -1176,7 +1177,7 @@
                   React.createElement(
                     "div",
                     {
-                      key: `tournament-${index}`,
+                      key: `tournament-${tournament.timestamp}-${index}`,
                       className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
                       onClick: () => handleOpenModal(tournament, "tournament")
                     },
@@ -1198,7 +1199,7 @@
                   React.createElement(
                     "div",
                     {
-                      key: `dicegame-${index}`,
+                      key: `dicegame-${diceGame.timestamp}-${index}`,
                       className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500 glow transition-all cursor-pointer",
                       onClick: () => handleOpenModal(diceGame, "dicegame")
                     },
@@ -1228,6 +1229,7 @@
                   React.createElement(
                     "button",
                     {
+                      key: "close-modal-button",
                       onClick: () => {
                         const isAnyEditing = Object.values(editModes).some(mode => mode);
                         if (isAnyEditing) {
@@ -1287,27 +1289,27 @@
                               ...calculatePlayerStats(selectedTournament.matches).flatMap((stat, index) => [
                                 React.createElement(
                                   "span",
-                                  { key: `stat-${index}-pos`, className: "text-pink-500 font-bold" },
+                                  { key: `stat-${selectedTournament.timestamp}-pos-${index}`, className: "text-pink-500 font-bold" },
                                   `${index + 1}.`
                                 ),
                                 React.createElement(
                                   "span",
-                                  { key: `stat-${index}-name` },
+                                  { key: `stat-${selectedTournament.timestamp}-name-${index}` },
                                   stat.player ? stat.player.name : "Ismeretlen"
                                 ),
                                 React.createElement(
                                   "span",
-                                  { key: `stat-${index}-wins`, className: "text-center text-pink-500 font-bold" },
+                                  { key: `stat-${selectedTournament.timestamp}-wins-${index}`, className: "text-center text-pink-500 font-bold" },
                                   stat.wins
                                 ),
                                 React.createElement(
                                   "span",
-                                  { key: `stat-${index}-gs`, className: "text-center" },
+                                  { key: `stat-${selectedTournament.timestamp}-gs-${index}`, className: "text-center" },
                                   stat.goalsScored
                                 ),
                                 React.createElement(
                                   "span",
-                                  { key: `stat-${index}-gc`, className: "text-center" },
+                                  { key: `stat-${selectedTournament.timestamp}-gc-${index}`, className: "text-center" },
                                   stat.goalsConceded
                                 ),
                               ]),
@@ -1321,7 +1323,7 @@
 
                         return React.createElement(
                           "div",
-                          { key: match.id, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
+                          { key: `match-${match.id}-${index}`, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
                           [
                             React.createElement(
                               "h4",
@@ -1350,27 +1352,25 @@
                                               className:
                                                 "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
                                             }),
-                                            showSuggestions[`${match.id}-team1Club`] &&
+                                            (teams && teams.length > 0 && showSuggestions[`${match.id}-team1Club`]) &&
                                               React.createElement(
                                                 "div",
                                                 {
                                                   className:
                                                     "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto",
                                                 },
-                                                teams
+                                                (teams || [])
                                                   .filter(team =>
                                                     team
-                                                      .toLowerCase()
-                                                      .includes(
-                                                        (teamSearch[`${match.id}-team1Club`] || "").toLowerCase()
-                                                      )
+                                                      ?.toLowerCase()
+                                                      ?.includes((teamSearch[`${match.id}-team1Club`] || "").toLowerCase())
                                                   )
                                                   .slice(0, 5)
-                                                  .map(team =>
+                                                  .map((team, teamIndex) =>
                                                     React.createElement(
                                                       "div",
                                                       {
-                                                        key: `${match.id}-team1-club-${team}`,
+                                                        key: `${match.id}-team1-club-${teamIndex}`,
                                                         onClick: () => selectTeam(match.id, "team1Club", team),
                                                         className:
                                                           "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer",
@@ -1439,6 +1439,7 @@
                                     React.createElement(
                                       "button",
                                       {
+                                        key: `edit-toggle-${match.id}`,
                                         onClick: toggleEditMode,
                                         className: "text-2xl mt-2",
                                       },
@@ -1464,27 +1465,25 @@
                                               className:
                                                 "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
                                             }),
-                                            showSuggestions[`${match.id}-team2Club`] &&
+                                            (teams && teams.length > 0 && showSuggestions[`${match.id}-team2Club`]) &&
                                               React.createElement(
                                                 "div",
                                                 {
                                                   className:
                                                     "absolute z-10 bg-gray-800 border border-gray-600 rounded-2xl mt-1 w-full max-h-40 overflow-y-auto",
                                                 },
-                                                teams
+                                                (teams || [])
                                                   .filter(team =>
                                                     team
-                                                      .toLowerCase()
-                                                      .includes(
-                                                        (teamSearch[`${match.id}-team2Club`] || "").toLowerCase()
-                                                      )
+                                                      ?.toLowerCase()
+                                                      ?.includes((teamSearch[`${match.id}-team2Club`] || "").toLowerCase())
                                                   )
                                                   .slice(0, 5)
-                                                  .map(team =>
+                                                  .map((team, teamIndex) =>
                                                     React.createElement(
                                                       "div",
                                                       {
-                                                        key: `${match.id}-team2-club-${team}`,
+                                                        key: `${match.id}-team2-club-${teamIndex}`,
                                                         onClick: () => selectTeam(match.id, "team2Club", team),
                                                         className:
                                                           "p-2 text-white text-sm hover:bg-pink-500 cursor-pointer",
@@ -1534,6 +1533,7 @@
                   React.createElement(
                     "button",
                     {
+                      key: "close-dice-modal",
                       onClick: handleCloseModal,
                       className: "absolute top-2 right-2 text-white text-2xl",
                     },
@@ -1551,7 +1551,7 @@
                       const player = players.find(p => p.id === result.playerId);
                       return React.createElement(
                         "div",
-                        { key: `result-${index}`, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
+                        { key: `result-${result.playerId}-${index}`, className: "bg-gray-800 bg-opacity-80 p-4 rounded-2xl border border-pink-500" },
                         [
                           React.createElement(
                             "span",
