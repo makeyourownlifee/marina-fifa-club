@@ -1353,8 +1353,10 @@
                                             React.createElement("input", {
                                               type: "text",
                                               value: teamSearch[`${match.id}-team1Club`] || match.team1Club || "",
-                                              onChange: (e) =>
-                                                handleTeamSearch(match.id, "team1Club", e.target.value),
+                                              onChange: (e) => {
+                                                console.log("Input onChange triggered for team1Club:", match.id, e.target.value);
+                                                handleTeamSearch(match.id, "team1Club", e.target.value);
+                                              },
                                               placeholder: "Csapat keresése...",
                                               className:
                                                 "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
@@ -1466,8 +1468,10 @@
                                             React.createElement("input", {
                                               type: "text",
                                               value: teamSearch[`${match.id}-team2Club`] || match.team2Club || "",
-                                              onChange: (e) =>
-                                                handleTeamSearch(match.id, "team2Club", e.target.value),
+                                              onChange: (e) => {
+                                                console.log("Input onChange triggered for team2Club:", match.id, e.target.value);
+                                                handleTeamSearch(match.id, "team2Club", e.target.value);
+                                              },
                                               placeholder: "Csapat keresése...",
                                               className:
                                                 "border border-gray-600 bg-gray-800 text-white p-2 rounded-2xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-500",
